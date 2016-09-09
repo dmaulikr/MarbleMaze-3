@@ -17,6 +17,10 @@ enum CollisionTypes: UInt32 {
 }
 
 class GameScene: SKScene {
+    
+    //adding player property so we can reference the player throughout the game
+    var player: SKSpriteNode!
+    
     override func didMoveToView(view: SKView) {
         let background = SKSpriteNode(imageNamed: "background.jpg")
         background.blendMode = .Replace
@@ -95,5 +99,22 @@ class GameScene: SKScene {
                 }
             }
         }
+    }
+    
+    func createPlayer() {
+        player = SKSpriteNode(imageNamed: "player")
+        player.position = CGPoint(x: 96, y: 672)
+        player.physicsBody = SKPhysicsBody(circleOfRadius: player.size.width / 2)
+        // setting linear damping to 0.5 to create friction
+        player.physicsBody!.linearDamping = 0.5
+        // setting allowsRotation property to false b/c the marble reflection doesn't rotate
+        player.physicsBody!.allowsRotation = false
+        
+        //set the bitmasks
+        player.physicsBody!.categoryBitMask = CollisionTypes.Player.rawValue
+        player.physicsBody!.contactTestBitMask = CollisionTypes.Star.rawValue | CollisionTypes.Vortex.rawValue | CollisionTypes.Finish.rawValue
+        player.physicsBody!.collisionBitMask = CollisionTypes.Wall.rawValue
+        addChild(player)
+        
     }
 }
