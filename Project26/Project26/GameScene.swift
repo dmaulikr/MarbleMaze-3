@@ -8,9 +8,23 @@
 
 import SpriteKit
 
+enum CollisionTypes: UInt32 {
+    case Player = 1
+    case Wall = 2
+    case Star = 4
+    case Vortex = 8
+    case Finish = 16
+}
+
 class GameScene: SKScene {
     override func didMoveToView(view: SKView) {
+        let background = SKSpriteNode(imageNamed: "background.jpg")
+        background.blendMode = .Replace
+        background.position = CGPoint(x: 512, y: 384)
+        background.zPosition = -1
+        addChild(background)
         
+        loadLevel()
     }
     
     override func touchesBegan(touches: Set<UITouch>, withEvent event: UIEvent?) {
@@ -27,18 +41,55 @@ class GameScene: SKScene {
             if let levelString = try? String(contentsOfFile: levelPath, usedEncoding: nil) {
                 let lines = levelString.componentsSeparatedByString("\n")
                 
+                //enumerate through each row but in reverse since the level is being built from bottom to top
                 for (row, line) in lines.reverse().enumerate() {
+                    //enumerate through each letter in line
                     for (column, letter) in line.characters.enumerate() {
                         let position = CGPoint(x: (64 * column) + 32, y: (64 * row) + 32)
                         
                         if letter == "x" {
-                            // load wall
+                            let node = SKSpriteNode(imageNamed: "block")
+                            node.position = position
+                            
+                            node.physicsBody = SKPhysicsBody(rectangleOfSize: node.size)
+                            node.physicsBody!.categoryBitMask = CollisionTypes.Wall.rawValue
+                            node.physicsBody!.dynamic = false
+                            addChild(node)
                         } else if letter == "v" {
-                            // load vortex
+                            let node = SKSpriteNode(imageNamed: "vortex")
+                            node.name = "vortex"
+                            node.position = position
+                            node.runAction(SKAction.repeatActionForever(SKAction.rotateByAngle(CGFloat(M_PI), duration: 1)))
+                            node.physicsBody = SKPhysicsBody(circleOfRadius: node.size.width / 2)
+                            node.physicsBody!.dynamic = false
+                            
+                            node.physicsBody!.categoryBitMask = CollisionTypes.Vortex.rawValue
+                            //setting contactTestBitMask to value of player's category so we get notified when these two touch
+                            node.physicsBody!.contactTestBitMask = CollisionTypes.Player.rawValue
+                            node.physicsBody!.collisionBitMask = 0
+                            addChild(node)
                         } else if letter == "s" {
-                            // load star
+                            let node = SKSpriteNode(imageNamed: "star")
+                            node.name = "star"
+                            node.physicsBody = SKPhysicsBody(circleOfRadius: node.size.width / 2)
+                            node.physicsBody!.dynamic = false
+                            
+                            node.physicsBody!.categoryBitMask = CollisionTypes.Star.rawValue
+                            node.physicsBody!.contactTestBitMask = CollisionTypes.Player.rawValue
+                            node.physicsBody!.collisionBitMask = 0
+                            node.position = position
+                            addChild(node)
                         } else if letter == "f" {
-                            // load finish
+                            let node = SKSpriteNode(imageNamed: "finish")
+                            node.name = "finish"
+                            node.physicsBody = SKPhysicsBody(circleOfRadius: node.size.width / 2)
+                            node.physicsBody!.dynamic = false
+                            
+                            node.physicsBody!.categoryBitMask = CollisionTypes.Finish.rawValue
+                            node.physicsBody!.contactTestBitMask = CollisionTypes.Player.rawValue
+                            node.physicsBody!.collisionBitMask = 0
+                            node.position = position
+                            addChild(node)
                         }
                     }
                 }
