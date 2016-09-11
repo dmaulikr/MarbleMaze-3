@@ -21,6 +21,9 @@ class GameScene: SKScene {
     //adding player property so we can reference the player throughout the game
     var player: SKSpriteNode!
     
+    // property to help track touch position so we can simulate tilting on iOS simulator
+    var lastTouchPosition: CGPoint?
+    
     override func didMoveToView(view: SKView) {
         let background = SKSpriteNode(imageNamed: "background.jpg")
         background.blendMode = .Replace
@@ -28,11 +31,26 @@ class GameScene: SKScene {
         background.zPosition = -1
         addChild(background)
         
+        // setting the gravity roughly equivalent to Earth
+        physicsWorld.gravity = CGVector(dx: 0, dy: 0)
+        
         loadLevel()
+        createPlayer()
     }
     
     override func touchesBegan(touches: Set<UITouch>, withEvent event: UIEvent?) {
-       
+        // Set the value of the lastTouchPosition property here
+        if let touch = touches.first {
+            let location = touch.locationInNode(self)
+            lastTouchPosition = location
+        }
+    }
+    
+    override func touchesMoved(touches: Set<UITouch>, withEvent event: UIEvent?) {
+        if let touch = touches.first {
+            let location = touch.locationInNode(self)
+            lastTouchPosition = location
+        }
     }
    
     override func update(currentTime: CFTimeInterval) {
@@ -115,6 +133,5 @@ class GameScene: SKScene {
         player.physicsBody!.contactTestBitMask = CollisionTypes.Star.rawValue | CollisionTypes.Vortex.rawValue | CollisionTypes.Finish.rawValue
         player.physicsBody!.collisionBitMask = CollisionTypes.Wall.rawValue
         addChild(player)
-        
     }
 }
