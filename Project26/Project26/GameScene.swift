@@ -19,7 +19,7 @@ enum CollisionTypes: UInt32 {
 
 class GameScene: SKScene {
     
-    // Setting property so we can use Core Motion manager throughout the class
+    // Setting property so we can use Core Motion manager throughout the GameScene class
     var motionManager: CMMotionManager!
     
     // adding player property so we can reference the player throughout the game
@@ -71,10 +71,17 @@ class GameScene: SKScene {
     }
     
     override func update(currentTime: CFTimeInterval) {
+        // put code inside compiler directives (only runs when it evaluates to true)
+    #if (arch(i386) || arch(x86_64))
         if let currentTouch = lastTouchPosition {
             let diff = CGPoint(x: currentTouch.x - player.position.x, y: currentTouch.y - player.position.y)
             physicsWorld.gravity = CGVector(dx: diff.x / 100, dy: diff.y / 100)
         }
+    #else
+        if let accelerometerData = motionManager.accelerometerData {
+            physicsWorld.gravity = CGVector(dx: accelerometerData.acceleration.y * -50, dy: accelerometerData.acceleration.x * 50)
+        }
+    #endif
     }
     
     func loadLevel() {
