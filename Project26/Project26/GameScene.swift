@@ -6,6 +6,7 @@
 //  Copyright (c) 2016 Jeffrey Eng. All rights reserved.
 //
 
+import CoreMotion
 import SpriteKit
 
 enum CollisionTypes: UInt32 {
@@ -18,7 +19,10 @@ enum CollisionTypes: UInt32 {
 
 class GameScene: SKScene {
     
-    //adding player property so we can reference the player throughout the game
+    // Setting property so we can use Core Motion manager throughout the class
+    var motionManager: CMMotionManager!
+    
+    // adding player property so we can reference the player throughout the game
     var player: SKSpriteNode!
     
     // property to help track touch position so we can simulate tilting on iOS simulator
@@ -36,10 +40,14 @@ class GameScene: SKScene {
         
         loadLevel()
         createPlayer()
+        
+        // Creating instance of Core Motion Manager and collecting accelerometer info with the method
+        motionManager = CMMotionManager()
+        motionManager.startAccelerometerUpdates()
     }
     
     override func touchesBegan(touches: Set<UITouch>, withEvent event: UIEvent?) {
-        // Set the value of the lastTouchPosition property here
+        // Set the value of the lastTouchPosition property here for iOS simulator
         if let touch = touches.first {
             let location = touch.locationInNode(self)
             lastTouchPosition = location
@@ -47,14 +55,26 @@ class GameScene: SKScene {
     }
     
     override func touchesMoved(touches: Set<UITouch>, withEvent event: UIEvent?) {
+        // Set the value of the lastTouchPosition property here for iOS simulator
         if let touch = touches.first {
             let location = touch.locationInNode(self)
             lastTouchPosition = location
         }
     }
+    
+    override func touchesEnded(touches: Set<UITouch>, withEvent event: UIEvent?) {
+        lastTouchPosition = nil
+    }
    
+    override func touchesCancelled(touches: Set<UITouch>?, withEvent event: UIEvent?) {
+        lastTouchPosition = nil
+    }
+    
     override func update(currentTime: CFTimeInterval) {
-
+        if let currentTouch = lastTouchPosition {
+            let diff = CGPoint(x: currentTouch.x - player.position.x, y: currentTouch.y - player.position.y)
+            physicsWorld.gravity = CGVector(dx: diff.x / 100, dy: diff.y / 100)
+        }
     }
     
     func loadLevel() {
