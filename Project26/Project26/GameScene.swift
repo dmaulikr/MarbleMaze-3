@@ -6,6 +6,7 @@
 //  Copyright (c) 2016 Jeffrey Eng. All rights reserved.
 //
 
+import CoreMotion
 import SpriteKit
 
 enum CollisionTypes: UInt32 {
@@ -16,7 +17,29 @@ enum CollisionTypes: UInt32 {
     case Finish = 16
 }
 
-class GameScene: SKScene {
+class GameScene: SKScene, SKPhysicsContactDelegate {
+    
+    // Setting property so we can use Core Motion manager throughout the GameScene class
+    var motionManager: CMMotionManager!
+    
+    // adding player property so we can reference the player throughout the game
+    var player: SKSpriteNode!
+    
+    // property to help track touch position so we can simulate tilting on iOS simulator
+    var lastTouchPosition: CGPoint?
+    
+    // Keeping track of score
+    var scoreLabel: SKLabelNode!
+    
+    var score: Int = 0 {
+        didSet {
+            scoreLabel.text = "Score: \(score)"
+        }
+    }
+    
+    // keeping track of when game is finished
+    var gameOver = false
+    
     override func didMoveToView(view: SKView) {
         let background = SKSpriteNode(imageNamed: "background.jpg")
         background.blendMode = .Replace
@@ -24,15 +47,65 @@ class GameScene: SKScene {
         background.zPosition = -1
         addChild(background)
         
+        scoreLabel = SKLabelNode(fontNamed: "Chalkduster")
+        scoreLabel.text = "Score: 0"
+        scoreLabel.horizontalAlignmentMode = .Left
+        scoreLabel.position = CGPoint(x: 16, y: 16)
+        scoreLabel.zPosition = 1
+        addChild(scoreLabel)
+        
+        // setting the gravity roughly equivalent to Earth
+        physicsWorld.gravity = CGVector(dx: 0, dy: 0)
+        
         loadLevel()
+        createPlayer()
+        
+        // Creating instance of Core Motion Manager and collecting accelerometer info with the method
+        motionManager = CMMotionManager()
+        motionManager.startAccelerometerUpdates()
+        
+        // Making ourselves the contact delegate for the physics world
+        physicsWorld.contactDelegate = self
     }
     
     override func touchesBegan(touches: Set<UITouch>, withEvent event: UIEvent?) {
-       
+        // Set the value of the lastTouchPosition property here for iOS simulator
+        if let touch = touches.first {
+            let location = touch.locationInNode(self)
+            lastTouchPosition = location
+        }
+    }
+    
+    override func touchesMoved(touches: Set<UITouch>, withEvent event: UIEvent?) {
+        // Set the value of the lastTouchPosition property here for iOS simulator
+        if let touch = touches.first {
+            let location = touch.locationInNode(self)
+            lastTouchPosition = location
+        }
+    }
+    
+    override func touchesEnded(touches: Set<UITouch>, withEvent event: UIEvent?) {
+        lastTouchPosition = nil
     }
    
+    override func touchesCancelled(touches: Set<UITouch>?, withEvent event: UIEvent?) {
+        lastTouchPosition = nil
+    }
+    
     override func update(currentTime: CFTimeInterval) {
-
+        if !gameOver {
+        // put code inside compiler directives (only runs when it evaluates to true)
+    #if (arch(i386) || arch(x86_64))
+            if let currentTouch = lastTouchPosition {
+                let diff = CGPoint(x: currentTouch.x - player.position.x, y: currentTouch.y - player.position.y)
+                physicsWorld.gravity = CGVector(dx: diff.x / 100, dy: diff.y / 100)
+            }
+    #else
+            if let accelerometerData = motionManager.accelerometerData {
+                physicsWorld.gravity = CGVector(dx: accelerometerData.acceleration.y * -50, dy: accelerometerData.acceleration.x * 50)
+            }
+    #endif
+        }
     }
     
     func loadLevel() {
@@ -95,5 +168,58 @@ class GameScene: SKScene {
                 }
             }
         }
+    }
+    
+    func createPlayer() {
+        player = SKSpriteNode(imageNamed: "player")
+        player.position = CGPoint(x: 96, y: 672)
+        player.physicsBody = SKPhysicsBody(circleOfRadius: player.size.width / 2)
+        // setting linear damping to 0.5 to create friction
+        player.physicsBody!.linearDamping = 0.5
+        // setting allowsRotation property to false b/c the marble reflection doesn't rotate
+        player.physicsBody!.allowsRotation = false
+        
+        //set the bitmasks
+        player.physicsBody!.categoryBitMask = CollisionTypes.Player.rawValue
+        player.physicsBody!.contactTestBitMask = CollisionTypes.Star.rawValue | CollisionTypes.Vortex.rawValue | CollisionTypes.Finish.rawValue
+        player.physicsBody!.collisionBitMask = CollisionTypes.Wall.rawValue
+        addChild(player)
+    }
+    
+    func didBeginContact(contact: SKPhysicsContact) {
+        if contact.bodyA.node == player {
+            playerCollidedWithNode(contact.bodyB.node!)
+        } else if contact.bodyB.node == player {
+            playerCollidedWithNode(contact.bodyA.node!)
+        }
+    }
+    
+    func playerCollidedWithNode(node: SKNode) {
+        // We need to stop the ball from being a dynamic physics body so that it stops moving once it's sucked in
+        if node.name == "vortex" {
+            player.physicsBody!.dynamic = false
+            gameOver = true
+            score -= 1
+            
+            // We need to move the ball over the vortex, to simulate it being sucked in. It will also be scaled down at the same time
+            let move = SKAction.moveTo(node.position, duration: 0.25)
+            let scale = SKAction.scaleTo(0.0001, duration: 0.25)
+            // Once the move and scale has completed, we need to remove the ball from the game
+            let remove = SKAction.removeFromParent()
+            let sequence = SKAction.sequence([move, scale, remove])
+            
+            player.runAction(sequence) { [unowned self] in
+                // After all the actions complete, we need to create the player ball again and re-enable control
+                self.createPlayer()
+                self.gameOver = false
+            }
+        } else if node.name == "star" {
+            // If player moves over a star, we remove the star from the Game Scene and add a point
+            node.removeFromParent()
+            score += 1
+        } else if node.name == "finish" {
+            // If the player moves over the finish, load the next level
+        }
+        
     }
 }
