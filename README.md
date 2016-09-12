@@ -34,6 +34,7 @@ Repo following Project 26: Marble Maze with Core Motion at Hacking with Swift
         // run code here
       }
       ```
+      
 * Practiced:
   * ```enumerate()``` method on arrays to pull out item and index for use within a for-in loop
   * Enums
